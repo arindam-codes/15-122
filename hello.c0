@@ -1,0 +1,61 @@
+
+/// PRECONDITIONS
+// f computes x^y with base case of y is 0 then x = 1
+// in case of negative y we cant compute 
+// y must be greater than or equal to 0
+
+
+int POW(int x, int y)
+//@requires y >= 0;
+{
+    if (y == 0) return 1;
+    return POW(x, y-1) * x;   // x^y = x^(y-1) * x
+}
+
+
+int f(int x, int y)
+//@requires y >= 0; // executable contract directives || preconditions || contracts
+//ensures \result == x **y; but its pythonic and C0 has no primitive power function so we need to create our own 
+//@ensures \result == POW(x,y);
+
+{
+int r = 1;   // the input x y was something diff than after crossing the function body bczit manipluates it
+int b = x;   // now it has diff x's and y's so when it comes to check in postcondition C0 gets confused instead of ensuring it
+int c = y;   // thats why we need to seperate it 
+while (c > 1) {
+    if (c % 2 == 1) {
+        r = b * r;
+    }
+    
+    b = b * b;
+    c = c / 2;
+}
+return r * b;
+}
+
+/// WHY IT'S UNSAFE TO RELY ON CONTRACTS EVEN WHEN THEY EXISTS
+// coin -d hello.c0 
+// here d means just running things in development mode 
+// we can get caught the errors only if its running in d mode
+// but in production site we run it without -d mode 
+// so here contracts are treated as comments 
+// but the duty of functions was to compute x ^ y for given inputs spo it was a promise
+// but its failing to complete that promise for some inputs (which is negative y's)
+// thats why relying on an error and showing abort msg is unsafe
+
+
+// POINT-TO REASONING
+// we justify something by pointing to lines of code that supports it and get revrse in dirn untill it satisfies 
+
+/// CORRECTNESS
+// satisfied pre condition but not post condition theres a bug => function incorrect
+
+/// BLAME
+// precondition fails -> unsafe call
+// postcondition fails is theres bug in function code => function code is wrong
+
+/// USING CONTRACTS
+// with -d its developement code but it slows down the execution speed
+// w/o -d its production code
+
+// funtions using onnly in contracts(runs with -d bcz w/o -d its contracts are just comments treated by C0) are called specification function
