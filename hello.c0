@@ -15,23 +15,27 @@ int POW(int x, int y)
 
 int f(int x, int y)
 //@requires y >= 0; // executable contract directives || preconditions || contracts
-//ensures \result == x **y; but its pythonic and C0 has no primitive power function so we need to create our own 
+//ensures \result == x ** y; but its pythonic and C0 has no primitive power function so we need to create our own 
 //@ensures \result == POW(x,y);
 
 {
 int r = 1;   // the input x y was something diff than after crossing the function body bczit manipluates it
 int b = x;   // now it has diff x's and y's so when it comes to check in postcondition C0 gets confused instead of ensuring it
-int c = y;   // thats why we need to seperate it 
-while (c > 1) {
-    if (c % 2 == 1) {
-        r = b * r;
+int e = y;   // thats why we need to seperate it 
+while (e > 0)    // changed from (e > 1) -> (e > 0)                    // e is loop guard runs n+1 times first n times with the loop its correct last time it became wrong
+//@loop_invariant e >= 0;
+//@loop_invariant POW(b,e) * r == POW(x, y); // loop invariant and we need to abstract the loop just like function body is black box 
+{                                            // execution will abort if LI is ever false
+    if (e % 2 == 1) {                        // LI runs n + 1 times must be true for all n + 1 times 
+        r = b * r;                           // 1 time before starting the loop and n times with the loop
     }
     
     b = b * b;
-    c = c / 2;
+    e = e / 2;
 }
-return r * b;
-}
+//@assert e ==0;
+return r;    // changed from r * b -> r
+}                                            // at the time of exit LI is true but the loop guard is false
 
 /// WHY IT'S UNSAFE TO RELY ON CONTRACTS EVEN WHEN THEY EXISTS
 // coin -d hello.c0 
@@ -59,3 +63,97 @@ return r * b;
 // w/o -d its production code
 
 // funtions using onnly in contracts(runs with -d bcz w/o -d its contracts are just comments treated by C0) are called specification function
+
+
+
+
+/// validating proofs of invariants 
+// these are candidate invariants to make it general we need proofs
+// we will do it by mathematical induction when n =0 and then for n + 1
+// programmatically speaking before loop starts INIT hows the LI
+// for any arbitary iteration hows the LI is PRESserved
+// there are 2 LI's 1. e >= 0 2. (b^e)*r = x^y
+
+
+// LI 1
+
+// init:
+// A. e = y by line 24 
+// B. y >= 0 by line 9 
+// so e >= 0 by maths on A B
+
+// press:
+// before starting the loop e >= 0 after the loop ends thats diff e bcz e is changed multiple times inside the loop so to  distinguish lets say its e' >= 0
+// A. e' = e / 2 by line 34 
+// B. and we know e >= 0 from INIT step
+// so mathematically e' >= 0 
+
+// LT 2
+
+// init:
+// b = x
+// e = y 
+// r = 1
+// so by maths (b**e)*r = x**y
+
+// in the loop theres two cases one if e is odd and if e is even
+// case 1 if e is odd that is 2n + 1
+
+// press:
+// b' = b * b
+// e' = e / 2 = n
+// r' = b * r
+// (b'^e') * r' = ((b * b)^n) * b * r = ((b ^ 2) **n) * b * r = (b^2n) * b * r = (b^2n+1) * r = (b^e) * r == x^y 
+
+
+// case 2 even e = 2n
+
+// press:
+// b' = b * b
+// e' = e / 2 = n
+// r' = r
+// (b'^e') * r' = ((b * b)^n) * r = ((b ^ 2) **n) * r = (b^2n) * r = (b^e) * r = x^y
+
+
+// so we need to care abt loo guard and LI to find the bug every time
+
+// now after the loop since LI true and loop guard is false 
+// implies e <= 1 and for LI e >= 0 and (b^e)*r = x^y but e is an int so e is 0 or 1 
+// for e = 1 x^y = b * r => thats correct => no bug
+// for e = 0 x^y = 1 but function body returns r*b => BUG
+
+/// Fixing the Bug
+// since LI will be true so we have e >= 0 but the loop guard will be false and since e is an int we need the false loop guard to be e<=0
+// so when loop exits e becomes 0 and gives return r 
+
+
+/// Proof of Termination
+// its possible for a program not to return a wrong result but also not to return the right result 
+// what if progra never reaches return statement 
+
+// proof of termination by operational argument
+// e > 0
+// e' < e [its smaller bcz division in C0 just floors so 2.5 becomes 2 and 2 < 2.5]
+// e' >= 0 [0 lower bound for e]
+
+// Point to proof termination
+// A. e > 0 by loop guard
+// B. e' = e / 2
+// C. e' < e
+// D. e' >= 0 
+
+
+// Operational Reasoning Drawing conclusions about how things change when certain lines of code are executed
+// Value of variables right after an assignment                    Correct
+// Things happening in the body of a loop from outside this loop   Incorrect
+// Things happening in the body of a function being called         Incorrect
+// Previously true statement after variables in it have changed    Incorrect
+// very error prone no use except simple assignments except in termination proofs
+
+// Point to Reasoning
+// Drawing conclusions about what we know to be true by pointing to specific lines of code that justify them
+// ex - bools, cotracts, math, value of variablle right after assignments 
+
+// Tips for point to Reasoning
+// When reasoning about an earlier loop pretend the body of the loop is not there only rely on the loop guard and loop invariants
+// When reasoning about a function being called pretend the body of the function is not there unless it’s a specification function only rely on its contracts
